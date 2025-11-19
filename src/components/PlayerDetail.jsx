@@ -28,6 +28,9 @@ function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayer
   
   // Calculate opponent statistics (won most against / lost most against)
   const opponentStats = calculateOpponentStats(matchHistory, playerName)
+  
+  // Calculate tournament participation list
+  const tournamentList = calculateTournamentList(playerName, tournaments)
 
   return (
     <div className="player-detail">
@@ -233,6 +236,53 @@ function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayer
           })}
         </div>
       </div>
+
+      {/* Tournament Participation List */}
+      <div className="tournament-list-section">
+        <h2>Tournament Participation</h2>
+        <p className="section-subtitle">Participated in {tournamentList.length} tournament{tournamentList.length !== 1 ? 's' : ''}</p>
+        
+        <div className="tournament-grid">
+          {tournamentList.map((tournament, index) => (
+            <div key={index} className="tournament-card">
+              <div className="tournament-card-header">
+                <span className="tournament-name">{tournament.name}</span>
+                <span className="tournament-date">
+                  {new Date(tournament.date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="tournament-card-body">
+                {tournament.finalPlace && (
+                  <div className="tournament-placement">
+                    <span className="placement-label">Final Place:</span>
+                    <span className={`placement-value ${tournament.finalPlace <= 3 ? 'podium' : ''}`}>
+                      #{tournament.finalPlace}
+                    </span>
+                  </div>
+                )}
+                {tournament.qualifyingPlace && tournament.eliminationPlace && (
+                  <div className="tournament-details">
+                    <span className="detail-item">
+                      <span className="detail-label">Qualifying:</span>
+                      <span className="detail-value">#{tournament.qualifyingPlace}</span>
+                    </span>
+                    <span className="detail-item">
+                      <span className="detail-label">Knockout:</span>
+                      <span className="detail-value">#{tournament.eliminationPlace}</span>
+                    </span>
+                  </div>
+                )}
+                {tournament.seasonPoints !== undefined && (
+                  <div className="tournament-season-points">
+                    <span className="season-points-label">Season Points:</span>
+                    <span className="season-points-earned">+{tournament.seasonPoints}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -383,7 +433,7 @@ function calculateBestRanking(playerName, tournaments) {
     // Qualifying standings are NOT counted as tournament wins
     if (tournament.data.eliminations && tournament.data.eliminations.length > 0) {
       const eliminationStandings = tournament.data.eliminations[0].standings || []
-      const eliminationStanding = eliminationStandings.find(p => normalizePlayerName(p.name) === normalizedPlayerName && !p.deactivated && !p.removed)
+      const eliminationStanding = eliminationStandings.find(p => normalizePlayerName(p.name) === normalizedPlayerName && !p.removed)
       
       if (eliminationStanding) {
         rankings.push({
@@ -523,6 +573,74 @@ function calculateOpponentStats(matchHistory, playerName) {
     wonMostAgainst,
     lostMostAgainst
   }
+}
+
+// Helper function to calculate tournament participation list
+function calculateTournamentList(playerName, tournaments) {
+  const normalizedPlayerName = normalizePlayerName(playerName)
+  const tournamentList = []
+  
+  // Season points distribution (same as in App.jsx)
+  const seasonPointsMap = {
+    1: 25, 2: 20, 3: 16, 4: 13, 5: 11, 6: 10, 7: 9, 8: 8,
+    9: 7, 10: 6, 11: 5, 12: 4, 13: 3, 14: 2, 15: 1, 16: 1
+  }
+  
+  tournaments.forEach(tournament => {
+    let qualifyingPlace = null
+    let eliminationPlace = null
+    let finalPlace = null
+    let foundInQualifying = false
+    let foundInElimination = false
+    
+    // Check qualifying standings
+    if (tournament.data.qualifying && tournament.data.qualifying.length > 0) {
+      const qualifyingStandings = tournament.data.qualifying[0].standings || []
+      const qualifyingStanding = qualifyingStandings.find(
+        p => normalizePlayerName(p.name) === normalizedPlayerName && !p.removed
+      )
+      
+      if (qualifyingStanding && qualifyingStanding.stats.matches > 0) {
+        qualifyingPlace = qualifyingStanding.stats.place
+        finalPlace = qualifyingPlace
+        foundInQualifying = true
+      }
+    }
+    
+    // Check elimination standings (overrides qualifying place)
+    if (tournament.data.eliminations && tournament.data.eliminations.length > 0) {
+      const eliminationStandings = tournament.data.eliminations[0].standings || []
+      const eliminationStanding = eliminationStandings.find(
+        p => normalizePlayerName(p.name) === normalizedPlayerName && !p.removed
+      )
+      
+      if (eliminationStanding) {
+        eliminationPlace = eliminationStanding.stats.place
+        finalPlace = eliminationPlace // Elimination place is the final tournament result
+        foundInElimination = true
+      }
+    }
+    
+    // Only add if player participated
+    if (foundInQualifying || foundInElimination) {
+      const placePoints = seasonPointsMap[finalPlace] || 0
+      const attendancePoint = placePoints === 0 ? 1 : 0
+      
+      tournamentList.push({
+        name: tournament.name,
+        date: tournament.date,
+        qualifyingPlace,
+        eliminationPlace,
+        finalPlace,
+        seasonPoints: placePoints + attendancePoint
+      })
+    }
+  })
+  
+  // Sort by date (most recent first)
+  tournamentList.sort((a, b) => new Date(b.date) - new Date(a.date))
+  
+  return tournamentList
 }
 
 export default PlayerDetail

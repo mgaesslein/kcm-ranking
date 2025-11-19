@@ -169,20 +169,53 @@ function App() {
     const { playerRatings: trueSkillRatings, playerHistory: history } = calculateTrueSkillRatings(loadedTournaments)
     setPlayerHistory(history) // Store player history for individual player view
 
+    // Season points distribution (places 1-16)
+    const seasonPointsMap = {
+      1: 25, 2: 20, 3: 16, 4: 13, 5: 11, 6: 10, 7: 9, 8: 8,
+      9: 7, 10: 6, 11: 5, 12: 4, 13: 3, 14: 2, 15: 1, 16: 1
+    }
+
     // Aggregate stats from all tournaments
     loadedTournaments.forEach(tournament => {
-      if (!tournament.data.qualifying || tournament.data.qualifying.length === 0) return
-
-      const standings = tournament.data.qualifying[0].standings || []
+      // Get all players from qualifying
+      const qualifyingStandings = tournament.data.qualifying?.[0]?.standings || []
       
-      standings.forEach(player => {
-        if (player.deactivated || player.removed || player.stats.matches === 0) return
-
-        const normalizedName = normalizePlayerName(player.name)
-        const playerId = normalizedName // Use normalized name as key since IDs might differ between tournaments
-        
-        if (!playerStats.has(playerId)) {
-          playerStats.set(playerId, {
+      // Get all players from eliminations (final tournament placement)
+      const eliminationStandings = tournament.data.eliminations?.[0]?.standings || []
+      
+      // Create a map to track final placements (elimination takes precedence)
+      const playerFinalPlacement = new Map()
+      
+      // First, add all qualifying placements
+      qualifyingStandings.forEach(player => {
+        if (!player.removed && player.stats.matches > 0) {
+          const normalizedName = normalizePlayerName(player.name)
+          playerFinalPlacement.set(normalizedName, {
+            place: player.stats.place,
+            stats: player.stats,
+            external: player.external
+          })
+        }
+      })
+      
+      // Override with elimination placements (these are the final tournament results)
+      eliminationStandings.forEach(player => {
+        if (!player.removed) {
+          const normalizedName = normalizePlayerName(player.name)
+          const existing = playerFinalPlacement.get(normalizedName)
+          if (existing) {
+            playerFinalPlacement.set(normalizedName, {
+              ...existing,
+              place: player.stats.place // Use elimination place as final place
+            })
+          }
+        }
+      })
+      
+      // Process each player's tournament result
+      playerFinalPlacement.forEach((playerData, normalizedName) => {
+        if (!playerStats.has(normalizedName)) {
+          playerStats.set(normalizedName, {
             name: normalizedName,
             matches: 0,
             points: 0,
@@ -191,22 +224,28 @@ function App() {
             goalsFor: 0,
             goalsAgainst: 0,
             tournaments: 0,
-            external: player.external,
-            bestPlace: player.stats.place,
-            places: []
+            external: playerData.external,
+            bestPlace: playerData.place,
+            places: [],
+            seasonPoints: 0
           })
         }
 
-        const stats = playerStats.get(playerId)
-        stats.matches += player.stats.matches
-        stats.points += player.stats.points
-        stats.won += player.stats.won
-        stats.lost += player.stats.lost
-        stats.goalsFor += player.stats.goals
-        stats.goalsAgainst += player.stats.goals_in
+        const stats = playerStats.get(normalizedName)
+        stats.matches += playerData.stats.matches
+        stats.points += playerData.stats.points
+        stats.won += playerData.stats.won
+        stats.lost += playerData.stats.lost
+        stats.goalsFor += playerData.stats.goals
+        stats.goalsAgainst += playerData.stats.goals_in
         stats.tournaments += 1
-        stats.bestPlace = Math.min(stats.bestPlace, player.stats.place)
-        stats.places.push(player.stats.place)
+        stats.bestPlace = Math.min(stats.bestPlace, playerData.place)
+        stats.places.push(playerData.place)
+        
+        // Calculate season points based on final placement
+        const placePoints = seasonPointsMap[playerData.place] || 0
+        const attendancePoint = placePoints === 0 ? 1 : 0 // +1 for attending if not in top 16
+        stats.seasonPoints += placePoints + attendancePoint
       })
     })
 
@@ -235,18 +274,19 @@ function App() {
             ? ((player.won / player.matches) * 100).toFixed(1)
             : 0,
           trueSkill: trueSkill,
+          seasonPoints: player.seasonPoints,
           external: player.external
         }
       })
       .sort((a, b) => {
-        // Sort by total points, then by matches played, then by win rate
-        const pointsDiff = b.points - a.points
-        if (pointsDiff !== 0) return pointsDiff
+        // Sort by season points (primary), then TrueSkill, then total points
+        const seasonPointsDiff = b.seasonPoints - a.seasonPoints
+        if (seasonPointsDiff !== 0) return seasonPointsDiff
         
-        const matchesDiff = b.matches - a.matches
-        if (matchesDiff !== 0) return matchesDiff
+        const trueSkillDiff = b.trueSkill - a.trueSkill
+        if (trueSkillDiff !== 0) return trueSkillDiff
         
-        return parseFloat(b.winRate) - parseFloat(a.winRate)
+        return b.points - a.points
       })
       .map((player, index) => ({
         ...player,

@@ -15,6 +15,10 @@ export const playerAliases = {
   'Andy M.': 'Andreas Metzke',
   'Jona': 'Jona Steffel',
   'Moe': 'Manuel Butollo',
+  'Tombo': 'Thomas Bonfert',
+  'Nik': 'Nicki Preisinger',
+  'Nikki': 'Nicki Preisinger',
+  'Nik Preisinger': 'Nicki Preisinger',
 }
 
 /**

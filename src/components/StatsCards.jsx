@@ -26,18 +26,18 @@ function StatsCards({ players, viewMode, tournaments }) {
       color: 'secondary'
     },
     {
+      title: 'Season Leader',
+      value: players[0]?.name,
+      subtitle: `${players[0]?.seasonPoints || 0} points`,
+      icon: '🏆',
+      color: 'warning'
+    },
+    {
       title: 'Top Scorer',
       value: topScorer?.name,
       subtitle: `${topScorer?.goalsFor} goals`,
       icon: '⚽',
       color: 'success'
-    },
-    {
-      title: 'Best PPG',
-      value: players[0]?.name,
-      subtitle: `${players[0]?.pointsPerGame} PPG`,
-      icon: '🏆',
-      color: 'warning'
     }
   ] : [
     {

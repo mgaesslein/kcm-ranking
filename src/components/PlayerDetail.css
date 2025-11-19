@@ -360,6 +360,135 @@
   text-align: right;
 }
 
+/* Tournament List Section */
+.tournament-list-section {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tournament-list-section h2 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.tournament-card {
+  background: var(--background);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.tournament-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tournament-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tournament-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.tournament-date {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  margin-left: 0.5rem;
+}
+
+.tournament-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tournament-placement {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.placement-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.placement-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.placement-value.podium {
+  color: #fbbf24;
+}
+
+.tournament-details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.detail-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.detail-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.detail-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tournament-season-points {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.season-points-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.season-points-earned {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
 .trueskill-chart-section {
   background: var(--surface);
   border-radius: 12px;
@@ -551,6 +680,10 @@
   }
 
   .opponent-stats-section {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-grid {
     grid-template-columns: 1fr;
   }
 

@@ -71,6 +71,9 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
               </th>
               {viewMode === 'overall' && (
                 <>
+                  <th onClick={() => handleSort('seasonPoints')} className="sortable season-points-col" title="Season Points - Championship points based on tournament placements">
+                    Season Points <SortIcon field="seasonPoints" />
+                  </th>
                   <th onClick={() => handleSort('trueSkill')} className="sortable" title="TrueSkill Rating - A skill-based ranking system">
                     TrueSkill <SortIcon field="trueSkill" />
                   </th>
@@ -152,6 +155,11 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
                 </td>
                 {viewMode === 'overall' && (
                   <>
+                    <td className="season-points-cell">
+                      <span className="season-points-value" title={`Season Points: ${player.seasonPoints}`}>
+                        {player.seasonPoints}
+                      </span>
+                    </td>
                     <td className="trueskill-cell">
                       <span className="trueskill-rating" title={`TrueSkill: ${player.trueSkill.toFixed(1)}`}>
                         {player.trueSkill.toFixed(1)}
