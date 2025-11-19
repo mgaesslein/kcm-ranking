@@ -47,7 +47,7 @@ Add the following two secrets:
 
 #### Secret 1: DOCKERHUB_USERNAME
 - Name: `DOCKERHUB_USERNAME`
-- Value: Your Docker Hub username (e.g., `mgaesslein`)
+- Value: Your Docker Hub username (e.g., `mfreitag1`)
 - Click **Add secret**
 
 #### Secret 2: DOCKERHUB_TOKEN
@@ -84,8 +84,10 @@ Once the workflow completes, your Docker images will be available at:
 
 ### Docker Hub
 ```
-docker pull mgaesslein/kcm-ranking:latest
+docker pull mfreitag1/kcm-ranking:latest
 ```
+
+View on Docker Hub: https://hub.docker.com/r/mfreitag1/kcm-ranking
 
 ### GitHub Container Registry (GHCR)
 ```
@@ -123,8 +125,8 @@ Now your friend has multiple options to deploy:
 
 ### Option 1: Pull from Docker Hub (Easiest)
 ```bash
-docker pull mgaesslein/kcm-ranking:latest
-docker run -d -p 8080:80 --name kcm-ranking mgaesslein/kcm-ranking:latest
+docker pull mfreitag1/kcm-ranking:latest
+docker run -d -p 8080:80 --name kcm-ranking mfreitag1/kcm-ranking:latest
 ```
 
 ### Option 2: Pull from GitHub Container Registry
@@ -141,7 +143,7 @@ Create a `docker-compose.yml`:
 version: '3.8'
 services:
   kcm-ranking:
-    image: mgaesslein/kcm-ranking:latest
+    image: mfreitag1/kcm-ranking:latest
     container_name: kcm-ranking
     ports:
       - "8080:80"
@@ -186,7 +188,7 @@ git commit -m "Your changes"
 git push
 
 # Wait a few minutes, then your friend can pull the latest image:
-docker pull mgaesslein/kcm-ranking:latest
+docker pull mfreitag1/kcm-ranking:latest
 docker restart kcm-ranking
 ```
 

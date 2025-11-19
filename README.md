@@ -54,7 +54,7 @@ The built files will be in the `dist` directory.
 ### Automated Builds (GitHub Actions)
 
 This repository includes a GitHub Actions workflow that automatically builds and pushes Docker images to:
-- **Docker Hub**: `yourusername/kcm-ranking`
+- **Docker Hub**: [`mfreitag1/kcm-ranking`](https://hub.docker.com/r/mfreitag1/kcm-ranking)
 - **GitHub Container Registry**: `ghcr.io/mgaesslein/kcm-ranking`
 
 Images are automatically built when:
@@ -85,13 +85,13 @@ Your friend can pull the latest image:
 
 ```bash
 # From Docker Hub
-docker pull yourusername/kcm-ranking:latest
+docker pull mfreitag1/kcm-ranking:latest
 
 # Or from GitHub Container Registry
 docker pull ghcr.io/mgaesslein/kcm-ranking:latest
 
 # Run it
-docker run -d -p 8080:80 --name kcm-ranking yourusername/kcm-ranking:latest
+docker run -d -p 8080:80 --name kcm-ranking mfreitag1/kcm-ranking:latest
 ```
 
 ### Building the Docker Image Manually
