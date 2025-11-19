@@ -1,4 +1,4 @@
-# KCM Ranking - Table Soccer Tournament Rankings
+# KC München Ranking - Table Soccer Tournament Rankings
 
 A modern React application for displaying and analyzing table soccer (foosball) tournament rankings.
 
