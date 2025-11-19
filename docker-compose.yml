@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  kcm-ranking:
+    build: .
+    container_name: kcm-ranking
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
