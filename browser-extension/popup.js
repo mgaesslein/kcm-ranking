@@ -3,12 +3,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load settings
   const settings = await chrome.storage.local.get([
     'apiUrl',
+    'apiKey',
     'pendingTournament',
     'pendingFilename'
   ]);
   
   // Check if API is configured
-  const isConfigured = settings.apiUrl;
+  const isConfigured = settings.apiUrl && settings.apiKey;
   
   if (!isConfigured) {
     document.getElementById('settingsRequired').style.display = 'block';
@@ -83,11 +84,17 @@ async function exportToBackend() {
     // Get settings
     const settings = await chrome.storage.local.get([
       'apiUrl',
+      'apiKey',
       'pendingTournament'
     ]);
     
     if (!settings.apiUrl) {
       showStatus('Please configure API URL in settings first', 'error');
+      return;
+    }
+    
+    if (!settings.apiKey) {
+      showStatus('Please configure API key in settings first', 'error');
       return;
     }
     
@@ -99,6 +106,7 @@ async function exportToBackend() {
     // Upload to backend API
     const result = await pushToBackend(
       settings.apiUrl,
+      settings.apiKey,
       settings.pendingTournament
     );
     
@@ -123,7 +131,7 @@ async function exportToBackend() {
   }
 }
 
-async function pushToBackend(apiUrl, data) {
+async function pushToBackend(apiUrl, apiKey, data) {
   try {
     // Remove trailing slash if present
     const baseUrl = apiUrl.replace(/\/$/, '');
@@ -133,6 +141,7 @@ async function pushToBackend(apiUrl, data) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Key': apiKey
       },
       body: JSON.stringify(data)
     });

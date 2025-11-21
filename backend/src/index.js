@@ -2,11 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import tournamentsRouter from './routes/tournaments.js';
 import playersRouter from './routes/players.js';
 import statsRouter from './routes/stats.js';
 import aliasesRouter from './routes/aliases.js';
+import { requireApiKey } from './middleware/auth.js';
 
 dotenv.config();
 
@@ -20,29 +23,42 @@ app.use(helmet({
 }));
 app.use(compression());
 
+// Logging
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined'));
+} else {
+  app.use(morgan('dev'));
+}
+
 // CORS configuration - allow frontend and browser extensions
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, or browser extensions)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (like mobile apps, curl)
+    if (!origin) {
+      // In production, be more strict
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error('Origin required in production'));
+      }
+      return callback(null, true);
+    }
     
-    const allowedOrigins = [
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       process.env.CORS_ORIGIN || 'http://localhost:5173',
       'http://localhost:5173',
       'http://127.0.0.1:5173'
     ];
     
-    // Allow chrome-extension:// origins (browser extensions)
+    // Allow all chrome-extension origins (browser extensions)
     if (origin.startsWith('chrome-extension://')) {
       return callback(null, true);
     }
     
-    // Allow listed origins
+    // Check allowed origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    // For localhost development, allow all origins
+    // For localhost development, allow all localhost origins
     if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
       return callback(null, true);
     }
@@ -56,15 +72,42 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// Rate limiting - disabled in development
+const apiLimiter = process.env.NODE_ENV === 'development' 
+  ? (req, res, next) => next() // Skip rate limiting in development
+  : rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 200, // 200 requests per 15 minutes (increased for read operations)
+      message: 'Too many requests, please try again later.',
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+
+const writeLimiter = process.env.NODE_ENV === 'development'
+  ? (req, res, next) => next() // Skip rate limiting in development
+  : rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 50, // 50 write operations per 15 minutes (increased)
+      message: 'Too many write requests, please try again later.',
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+
+// Health check (no rate limiting)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routes
-app.use(`${API_PREFIX}/tournaments`, tournamentsRouter);
+// API routes - apply general rate limiting to all routes
+app.use(`${API_PREFIX}/`, apiLimiter);
+
+// Read-only routes (no authentication required, only general rate limiting)
 app.use(`${API_PREFIX}/players`, playersRouter);
 app.use(`${API_PREFIX}/stats`, statsRouter);
+app.use(`${API_PREFIX}/tournaments`, tournamentsRouter);
+
+// Aliases routes - GET requests are read-only, POST/PUT/DELETE require auth
+// We'll handle write operations in the route handlers
 app.use(`${API_PREFIX}/aliases`, aliasesRouter);
 
 // 404 handler
@@ -75,8 +118,13 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
+  
+  // Don't expose error details in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
   res.status(err.status || 500).json({
-    error: err.message || 'Internal server error'
+    error: err.message || 'Internal server error',
+    ...(isDevelopment && { stack: err.stack }) // Only in development
   });
 });
 

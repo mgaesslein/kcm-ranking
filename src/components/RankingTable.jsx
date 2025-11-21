@@ -50,10 +50,23 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
   return (
     <div className="ranking-table-container">
       <div className="table-header">
-        <h2>{viewMode === 'overall' ? 'Overall Rankings' : 'Player Rankings'}</h2>
+        <h2>
+          {viewMode === 'overall' ? 'Overall Rankings' : 
+           viewMode === 'season' ? 'Season Rankings' : 
+           'Player Rankings'}
+        </h2>
         <p className="table-subtitle">
           {viewMode === 'overall' 
             ? `Showing ${players.length} players across all tournaments`
+            : viewMode === 'season'
+            ? (() => {
+                const qualified = players.filter(p => p.finaleStatus === 'qualified').length
+                const successors = players.filter(p => p.finaleStatus === 'successor').length
+                if (qualified > 0 || successors > 0) {
+                  return `Showing ${qualified} qualified players${successors > 0 ? ` + ${successors} potential successors` : ''} (min. 10 games)`
+                }
+                return `Showing ${players.length} players for this season`
+              })()
             : `Showing ${players.length} players`
           }
         </p>
@@ -69,7 +82,7 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
               <th onClick={() => handleSort('name')} className="sortable name-col">
                 Player <SortIcon field="name" />
               </th>
-              {viewMode === 'overall' && (
+              {(viewMode === 'overall' || viewMode === 'season') && (
                 <>
                   <th onClick={() => handleSort('seasonPoints')} className="sortable season-points-col" title="Season Points - Championship points based on tournament placements">
                     Season Points <SortIcon field="seasonPoints" />
@@ -77,15 +90,32 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
                   <th onClick={() => handleSort('trueSkill')} className="sortable" title="TrueSkill Rating - A skill-based ranking system">
                     TrueSkill <SortIcon field="trueSkill" />
                   </th>
-                  <th onClick={() => handleSort('tournaments')} className="sortable">
-                    Tournaments <SortIcon field="tournaments" />
-                  </th>
-                  <th onClick={() => handleSort('bestPlace')} className="sortable">
-                    Best Place <SortIcon field="bestPlace" />
-                  </th>
-                  <th onClick={() => handleSort('avgPlace')} className="sortable">
-                    Avg Place <SortIcon field="avgPlace" />
-                  </th>
+                  {viewMode === 'overall' && (
+                    <>
+                      <th onClick={() => handleSort('tournaments')} className="sortable">
+                        Tournaments <SortIcon field="tournaments" />
+                      </th>
+                      <th onClick={() => handleSort('bestPlace')} className="sortable">
+                        Best Place <SortIcon field="bestPlace" />
+                      </th>
+                      <th onClick={() => handleSort('avgPlace')} className="sortable">
+                        Avg Place <SortIcon field="avgPlace" />
+                      </th>
+                    </>
+                  )}
+                  {viewMode === 'season' && (
+                    <>
+                      <th onClick={() => handleSort('tournaments')} className="sortable">
+                        Tournaments <SortIcon field="tournaments" />
+                      </th>
+                      <th onClick={() => handleSort('bestPlace')} className="sortable">
+                        Best Place <SortIcon field="bestPlace" />
+                      </th>
+                      <th onClick={() => handleSort('avgPlace')} className="sortable">
+                        Avg Place <SortIcon field="avgPlace" />
+                      </th>
+                    </>
+                  )}
                 </>
               )}
               {viewMode === 'tournament' && (
@@ -130,12 +160,20 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
           <tbody>
             {sortedPlayers.map((player) => {
               const displayPlace = viewMode === 'tournament' ? player.finalPlace : player.place
+              const finaleClass = player.finaleStatus === 'qualified' ? 'finale-qualified' : 
+                                 player.finaleStatus === 'successor' ? 'finale-successor' : ''
               return (
-              <tr key={player.id} className={`rank-${displayPlace <= 3 ? displayPlace : ''}`}>
+              <tr key={player.id} className={`rank-${displayPlace <= 3 ? displayPlace : ''} ${finaleClass}`}>
                 <td className="rank-cell">
                   <span className="rank-badge">
                     {getMedalEmoji(displayPlace)}
                   </span>
+                  {player.finaleStatus === 'qualified' && (
+                    <span className="finale-badge qualified" title="Qualified for Season Finale">✓</span>
+                  )}
+                  {player.finaleStatus === 'successor' && (
+                    <span className="finale-badge successor" title="Potential Successor">→</span>
+                  )}
                 </td>
                 <td className="name-cell">
                   <div className="player-info">
@@ -153,7 +191,7 @@ function RankingTable({ players, viewMode, onPlayerSelect }) {
                     )}
                   </div>
                 </td>
-                {viewMode === 'overall' && (
+                {(viewMode === 'overall' || viewMode === 'season') && (
                   <>
                     <td className="season-points-cell">
                       <span className="season-points-value" title={`Season Points: ${player.seasonPoints}`}>

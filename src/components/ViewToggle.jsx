@@ -11,6 +11,13 @@ function ViewToggle({ viewMode, onViewModeChange }) {
         Overall Ranking
       </button>
       <button
+        className={`toggle-button ${viewMode === 'season' ? 'active' : ''}`}
+        onClick={() => onViewModeChange('season')}
+      >
+        <span className="button-icon">📊</span>
+        Season Ranking
+      </button>
+      <button
         className={`toggle-button ${viewMode === 'tournament' ? 'active' : ''}`}
         onClick={() => onViewModeChange('tournament')}
       >

@@ -4,6 +4,7 @@ import './PlayerDetail.css'
 
 function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayers, onBack }) {
   const [selectedComparePlayer, setSelectedComparePlayer] = useState('')
+  const [activeTab, setActiveTab] = useState('overview')
   
   const history = playerHistory.get(playerName) || []
   
@@ -33,6 +34,21 @@ function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayer
   
   // Calculate tournament participation list
   const tournamentList = calculateTournamentList(playerName, tournaments)
+  
+  // Calculate achievements
+  const achievements = calculateAchievements(
+    playerName,
+    matchHistory,
+    tournaments,
+    tournamentList,
+    bestRankingStats,
+    topPartners,
+    currentSkill,
+    totalMatches,
+    wins,
+    winRate,
+    playerAggregated
+  )
   
   // Calculate head-to-head comparison if a player is selected
   const headToHeadStats = selectedComparePlayer 
@@ -83,8 +99,52 @@ function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayer
         </div>
       </div>
 
-      {/* Best Ranking and Top Partners Section */}
-      <div className="player-insights">
+      {/* Tabs */}
+      <div className="player-detail-tabs">
+        <button
+          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          <span className="tab-icon">📊</span>
+          Overview
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'achievements' ? 'active' : ''}`}
+          onClick={() => setActiveTab('achievements')}
+        >
+          <span className="tab-icon">🏆</span>
+          Achievements
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'performance' ? 'active' : ''}`}
+          onClick={() => setActiveTab('performance')}
+        >
+          <span className="tab-icon">📈</span>
+          Performance
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'tournaments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tournaments')}
+        >
+          <span className="tab-icon">📅</span>
+          Tournaments
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'comparison' ? 'active' : ''}`}
+          onClick={() => setActiveTab('comparison')}
+        >
+          <span className="tab-icon">🔀</span>
+          Comparison
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="tab-content">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="tab-panel">
+            {/* Best Ranking and Top Partners Section */}
+            <div className="player-insights">
         {/* Best Rankings (Top 3) */}
         <div className="insight-box best-ranking">
           <h3 className="insight-title">🏅 Best Rankings</h3>
@@ -189,9 +249,145 @@ function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayer
           )}
         </div>
       </div>
+          </div>
+        )}
 
-      {/* Player Comparison Section */}
-      <div className="player-comparison-section">
+        {/* Achievements Tab */}
+        {activeTab === 'achievements' && (
+          <div className="tab-panel">
+            <div className="achievements-section">
+              <h2>🏆 Achievements</h2>
+              <AchievementsDisplay achievements={achievements} />
+            </div>
+          </div>
+        )}
+
+        {/* Performance Tab */}
+        {activeTab === 'performance' && (
+          <div className="tab-panel">
+            {/* TrueSkill Evolution Chart */}
+            <div className="trueskill-chart-section">
+              <h2>TrueSkill Evolution</h2>
+              <TrueSkillChart history={history} playerName={playerName} />
+            </div>
+
+            {/* Match History */}
+            <div className="match-history-section">
+              <h2>Match History</h2>
+              <p className="section-subtitle">Showing {matchHistory.length} matches</p>
+              
+              <div className="match-list">
+                {matchHistory.map((entry, index) => {
+                  const { match } = entry
+                  const playerTeam = match.team1Players.includes(playerName) ? 'team1' : 'team2'
+                  const teammates = playerTeam === 'team1' ? match.team1Players : match.team2Players
+                  const opponents = playerTeam === 'team1' ? match.team2Players : match.team1Players
+                  const score = playerTeam === 'team1' 
+                    ? `${match.team1Score} - ${match.team2Score}`
+                    : `${match.team2Score} - ${match.team1Score}`
+                  
+                  // Since array is reversed (newest first), calculate delta from next match (older)
+                  const skillDelta = index < matchHistory.length - 1 
+                    ? entry.skill - matchHistory[index + 1].skill 
+                    : entry.skill - initialSkill
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className={`match-card ${match.won ? 'won' : 'lost'}`}
+                    >
+                      <div className="match-header">
+                        <span className={`match-result ${match.won ? 'won' : 'lost'}`}>
+                          {match.won ? '✓ Won' : '✗ Lost'}
+                        </span>
+                        <span className="match-score">{score}</span>
+                        <span className={`skill-change ${skillDelta >= 0 ? 'positive' : 'negative'}`}>
+                          {skillDelta >= 0 ? '+' : ''}{skillDelta.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="match-details">
+                        <div className="team-info">
+                          <span className="team-label">Your Team:</span>
+                          <span className="team-players">{teammates.join(', ')}</span>
+                        </div>
+                        <div className="team-info">
+                          <span className="team-label">Opponents:</span>
+                          <span className="team-players">{opponents.join(', ')}</span>
+                        </div>
+                      </div>
+                      <div className="match-footer">
+                        <span className="match-date">
+                          {new Date(entry.date).toLocaleDateString()}
+                        </span>
+                        <span className="trueskill-after">
+                          TrueSkill: {entry.skill.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tournaments Tab */}
+        {activeTab === 'tournaments' && (
+          <div className="tab-panel">
+            {/* Tournament Participation List */}
+            <div className="tournament-list-section">
+              <h2>Tournament Participation</h2>
+              <p className="section-subtitle">Participated in {tournamentList.length} tournament{tournamentList.length !== 1 ? 's' : ''}</p>
+              
+              <div className="tournament-grid">
+                {tournamentList.map((tournament, index) => (
+                  <div key={index} className="tournament-card">
+                    <div className="tournament-card-header">
+                      <span className="tournament-name">{tournament.name}</span>
+                      <span className="tournament-date">
+                        {new Date(tournament.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="tournament-card-body">
+                      {tournament.finalPlace && (
+                        <div className="tournament-placement">
+                          <span className="placement-label">Final Place:</span>
+                          <span className={`placement-value ${tournament.finalPlace <= 3 ? 'podium' : ''}`}>
+                            #{tournament.finalPlace}
+                          </span>
+                        </div>
+                      )}
+                      {tournament.qualifyingPlace && tournament.eliminationPlace && (
+                        <div className="tournament-details">
+                          <span className="detail-item">
+                            <span className="detail-label">Qualifying:</span>
+                            <span className="detail-value">#{tournament.qualifyingPlace}</span>
+                          </span>
+                          <span className="detail-item">
+                            <span className="detail-label">Knockout:</span>
+                            <span className="detail-value">#{tournament.eliminationPlace}</span>
+                          </span>
+                        </div>
+                      )}
+                      {tournament.seasonPoints !== undefined && (
+                        <div className="tournament-season-points">
+                          <span className="season-points-label">Season Points:</span>
+                          <span className="season-points-earned">+{tournament.seasonPoints}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Comparison Tab */}
+        {activeTab === 'comparison' && (
+          <div className="tab-panel">
+            {/* Player Comparison Section */}
+            <div className="player-comparison-section">
         <h2>🔀 Compare with Another Player</h2>
         <div className="comparison-selector">
           <select 
@@ -298,117 +494,9 @@ function PlayerDetail({ playerName, playerHistory, tournaments, aggregatedPlayer
             </div>
           </div>
         )}
-      </div>
-
-      {/* TrueSkill Evolution Chart */}
-      <div className="trueskill-chart-section">
-        <h2>TrueSkill Evolution</h2>
-        <TrueSkillChart history={history} playerName={playerName} />
-      </div>
-
-      {/* Match History */}
-      <div className="match-history-section">
-        <h2>Match History</h2>
-        <p className="section-subtitle">Showing {matchHistory.length} matches</p>
-        
-        <div className="match-list">
-          {matchHistory.map((entry, index) => {
-            const { match } = entry
-            const playerTeam = match.team1Players.includes(playerName) ? 'team1' : 'team2'
-            const teammates = playerTeam === 'team1' ? match.team1Players : match.team2Players
-            const opponents = playerTeam === 'team1' ? match.team2Players : match.team1Players
-            const score = playerTeam === 'team1' 
-              ? `${match.team1Score} - ${match.team2Score}`
-              : `${match.team2Score} - ${match.team1Score}`
-            
-            // Since array is reversed (newest first), calculate delta from next match (older)
-            const skillDelta = index < matchHistory.length - 1 
-              ? entry.skill - matchHistory[index + 1].skill 
-              : entry.skill - initialSkill
-            
-            return (
-              <div 
-                key={index} 
-                className={`match-card ${match.won ? 'won' : 'lost'}`}
-              >
-                <div className="match-header">
-                  <span className={`match-result ${match.won ? 'won' : 'lost'}`}>
-                    {match.won ? '✓ Won' : '✗ Lost'}
-                  </span>
-                  <span className="match-score">{score}</span>
-                  <span className={`skill-change ${skillDelta >= 0 ? 'positive' : 'negative'}`}>
-                    {skillDelta >= 0 ? '+' : ''}{skillDelta.toFixed(2)}
-                  </span>
-                </div>
-                <div className="match-details">
-                  <div className="team-info">
-                    <span className="team-label">Your Team:</span>
-                    <span className="team-players">{teammates.join(', ')}</span>
-                  </div>
-                  <div className="team-info">
-                    <span className="team-label">Opponents:</span>
-                    <span className="team-players">{opponents.join(', ')}</span>
-                  </div>
-                </div>
-                <div className="match-footer">
-                  <span className="match-date">
-                    {new Date(entry.date).toLocaleDateString()}
-                  </span>
-                  <span className="trueskill-after">
-                    TrueSkill: {entry.skill.toFixed(1)}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Tournament Participation List */}
-      <div className="tournament-list-section">
-        <h2>Tournament Participation</h2>
-        <p className="section-subtitle">Participated in {tournamentList.length} tournament{tournamentList.length !== 1 ? 's' : ''}</p>
-        
-        <div className="tournament-grid">
-          {tournamentList.map((tournament, index) => (
-            <div key={index} className="tournament-card">
-              <div className="tournament-card-header">
-                <span className="tournament-name">{tournament.name}</span>
-                <span className="tournament-date">
-                  {new Date(tournament.date).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="tournament-card-body">
-                {tournament.finalPlace && (
-                  <div className="tournament-placement">
-                    <span className="placement-label">Final Place:</span>
-                    <span className={`placement-value ${tournament.finalPlace <= 3 ? 'podium' : ''}`}>
-                      #{tournament.finalPlace}
-                    </span>
-                  </div>
-                )}
-                {tournament.qualifyingPlace && tournament.eliminationPlace && (
-                  <div className="tournament-details">
-                    <span className="detail-item">
-                      <span className="detail-label">Qualifying:</span>
-                      <span className="detail-value">#{tournament.qualifyingPlace}</span>
-                    </span>
-                    <span className="detail-item">
-                      <span className="detail-label">Knockout:</span>
-                      <span className="detail-value">#{tournament.eliminationPlace}</span>
-                    </span>
-                  </div>
-                )}
-                {tournament.seasonPoints !== undefined && (
-                  <div className="tournament-season-points">
-                    <span className="season-points-label">Season Points:</span>
-                    <span className="season-points-earned">+{tournament.seasonPoints}</span>
-                  </div>
-                )}
-              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -895,6 +983,468 @@ function calculateTeammateStats(matchHistory, player1Name, player2Name) {
     wins,
     losses
   }
+}
+
+// Achievement definitions
+const ACHIEVEMENT_DEFINITIONS = {
+  // Tournament Performance
+  firstPlace: { id: 'firstPlace', emoji: '🥇', name: 'First Place', description: 'Win your first tournament', category: 'tournament', tier: 1, threshold: 1 },
+  champion3: { id: 'champion3', emoji: '🏆', name: 'Champion', description: 'Win 3 tournaments', category: 'tournament', tier: 2, threshold: 3 },
+  champion5: { id: 'champion5', emoji: '👑', name: 'Elite Champion', description: 'Win 5 tournaments', category: 'tournament', tier: 3, threshold: 5 },
+  champion10: { id: 'champion10', emoji: '💎', name: 'Legendary Champion', description: 'Win 10 tournaments', category: 'tournament', tier: 4, threshold: 10 },
+  podium3: { id: 'podium3', emoji: '🥉', name: 'Podium Finisher', description: 'Finish in top 3 (3 times)', category: 'tournament', tier: 1, threshold: 3 },
+  podium5: { id: 'podium5', emoji: '🎖️', name: 'Consistent Podium', description: 'Finish in top 3 (5 times)', category: 'tournament', tier: 2, threshold: 5 },
+  top5_5: { id: 'top5_5', emoji: '⭐', name: 'Consistent Performer', description: 'Finish in top 5 (5 times)', category: 'tournament', tier: 1, threshold: 5 },
+  top5_10: { id: 'top5_10', emoji: '🌟', name: 'Elite Performer', description: 'Finish in top 5 (10 times)', category: 'tournament', tier: 2, threshold: 10 },
+  
+  // Milestones
+  matches50: { id: 'matches50', emoji: '🎯', name: 'Veteran', description: 'Play 50 matches', category: 'milestone', tier: 1, threshold: 50 },
+  matches100: { id: 'matches100', emoji: '🎖️', name: 'Centurion', description: 'Play 100 matches', category: 'milestone', tier: 2, threshold: 100 },
+  matches250: { id: 'matches250', emoji: '🏅', name: 'Master', description: 'Play 250 matches', category: 'milestone', tier: 3, threshold: 250 },
+  matches500: { id: 'matches500', emoji: '💫', name: 'Legend', description: 'Play 500 matches', category: 'milestone', tier: 4, threshold: 500 },
+  wins25: { id: 'wins25', emoji: '🔥', name: 'Winner', description: 'Win 25 matches', category: 'milestone', tier: 1, threshold: 25 },
+  wins50: { id: 'wins50', emoji: '⚡', name: 'Dominator', description: 'Win 50 matches', category: 'milestone', tier: 2, threshold: 50 },
+  wins100: { id: 'wins100', emoji: '💥', name: 'Champion', description: 'Win 100 matches', category: 'milestone', tier: 3, threshold: 100 },
+  wins250: { id: 'wins250', emoji: '🚀', name: 'Unstoppable', description: 'Win 250 matches', category: 'milestone', tier: 4, threshold: 250 },
+  tournaments10: { id: 'tournaments10', emoji: '📅', name: 'Regular', description: 'Play in 10 tournaments', category: 'milestone', tier: 1, threshold: 10 },
+  tournaments25: { id: 'tournaments25', emoji: '📆', name: 'Dedicated', description: 'Play in 25 tournaments', category: 'milestone', tier: 2, threshold: 25 },
+  tournaments50: { id: 'tournaments50', emoji: '🗓️', name: 'Veteran Competitor', description: 'Play in 50 tournaments', category: 'milestone', tier: 3, threshold: 50 },
+  seasons5: { id: 'seasons5', emoji: '📊', name: 'Season Veteran', description: 'Play in 5+ seasons', category: 'milestone', tier: 2, threshold: 5 },
+  
+  // Performance
+  winRate60: { id: 'winRate60', emoji: '🎯', name: 'Sharp Shooter', description: 'Achieve 60%+ win rate (min 20 matches)', category: 'performance', tier: 1, threshold: 60, minMatches: 20 },
+  winRate70: { id: 'winRate70', emoji: '🎪', name: 'Elite Player', description: 'Achieve 70%+ win rate (min 20 matches)', category: 'performance', tier: 2, threshold: 70, minMatches: 20 },
+  winRate80: { id: 'winRate80', emoji: '🏆', name: 'Master', description: 'Achieve 80%+ win rate (min 20 matches)', category: 'performance', tier: 3, threshold: 80, minMatches: 20 },
+  goalDiff50: { id: 'goalDiff50', emoji: '⚽', name: 'Goal Machine', description: 'Achieve +50 goal difference', category: 'performance', tier: 1, threshold: 50 },
+  goalDiff100: { id: 'goalDiff100', emoji: '🔥', name: 'Goal Master', description: 'Achieve +100 goal difference', category: 'performance', tier: 2, threshold: 100 },
+  goalDiff200: { id: 'goalDiff200', emoji: '💥', name: 'Goal Legend', description: 'Achieve +200 goal difference', category: 'performance', tier: 3, threshold: 200 },
+  
+  // TrueSkill
+  trueskill20: { id: 'trueskill20', emoji: '⭐', name: 'Rising Star', description: 'Reach TrueSkill 20', category: 'trueskill', tier: 1, threshold: 20 },
+  trueskill25: { id: 'trueskill25', emoji: '🌟', name: 'Star Player', description: 'Reach TrueSkill 25', category: 'trueskill', tier: 2, threshold: 25 },
+  trueskill30: { id: 'trueskill30', emoji: '💫', name: 'Elite', description: 'Reach TrueSkill 30', category: 'trueskill', tier: 3, threshold: 30 },
+  trueskill35: { id: 'trueskill35', emoji: '🏆', name: 'Master', description: 'Reach TrueSkill 35', category: 'trueskill', tier: 4, threshold: 35 },
+  trueskill40: { id: 'trueskill40', emoji: '👑', name: 'Grandmaster', description: 'Reach TrueSkill 40', category: 'trueskill', tier: 5, threshold: 40 },
+  trueskill45: { id: 'trueskill45', emoji: '💎', name: 'Legend', description: 'Reach TrueSkill 45', category: 'trueskill', tier: 6, threshold: 45 },
+  trueskill50: { id: 'trueskill50', emoji: '🚀', name: 'Mythic', description: 'Reach TrueSkill 50', category: 'trueskill', tier: 7, threshold: 50 },
+  
+  // Streaks
+  winStreak5: { id: 'winStreak5', emoji: '🔥', name: 'Hot Streak', description: 'Win 5 matches in a row', category: 'streak', tier: 1, threshold: 5 },
+  winStreak10: { id: 'winStreak10', emoji: '⚡', name: 'On Fire', description: 'Win 10 matches in a row', category: 'streak', tier: 2, threshold: 10 },
+  winStreak15: { id: 'winStreak15', emoji: '💥', name: 'Unstoppable', description: 'Win 15 matches in a row', category: 'streak', tier: 3, threshold: 15 },
+  
+  // Partnerships
+  partner10: { id: 'partner10', emoji: '🤝', name: 'Dynamic Duo', description: 'Win 10+ matches with the same partner', category: 'partnership', tier: 1, threshold: 10 },
+  partner5: { id: 'partner5', emoji: '👥', name: 'Team Player', description: 'Win with 5+ different partners', category: 'partnership', tier: 1, threshold: 5 },
+  
+  // Season Achievements
+  seasonChampion: { id: 'seasonChampion', emoji: '🏆', name: 'Season Champion', description: 'Win a season', category: 'season', tier: 3, threshold: 1 },
+  seasonPodium: { id: 'seasonPodium', emoji: '🥉', name: 'Season Podium', description: 'Finish top 3 in a season', category: 'season', tier: 2, threshold: 1 },
+  seasonPoints50: { id: 'seasonPoints50', emoji: '⭐', name: 'Season Star', description: 'Earn 50+ season points in one season', category: 'season', tier: 1, threshold: 50 },
+  seasonPoints100: { id: 'seasonPoints100', emoji: '🌟', name: 'Season Elite', description: 'Earn 100+ season points in one season', category: 'season', tier: 2, threshold: 100 },
+  seasonPoints200: { id: 'seasonPoints200', emoji: '💎', name: 'Season Legend', description: 'Earn 200+ season points in one season', category: 'season', tier: 3, threshold: 200 },
+}
+
+// Calculate all achievements for a player
+function calculateAchievements(playerName, matchHistory, tournaments, tournamentList, bestRankingStats, topPartners, currentSkill, totalMatches, wins, winRate, playerAggregated) {
+  const normalizedPlayerName = normalizePlayerNameSync(playerName)
+  const achievements = []
+  const progress = []
+  
+  // Tournament wins count
+  const tournamentWins = bestRankingStats.filter(r => r.place === 1).reduce((sum, r) => sum + r.count, 0)
+  const top3Count = bestRankingStats.filter(r => r.place <= 3).reduce((sum, r) => sum + r.count, 0)
+  const top5Count = bestRankingStats.filter(r => r.place <= 5).reduce((sum, r) => sum + r.count, 0)
+  
+  // Find achievement unlock dates from tournament dates
+  const getUnlockDate = (count, targetCount, rankingStats) => {
+    if (count < targetCount) return null
+    // Find the tournament date when the target count was reached
+    const sortedWins = []
+    rankingStats.forEach(r => {
+      if (r.place === 1) {
+        r.tournaments.forEach(t => {
+          sortedWins.push(new Date(t.date))
+        })
+      }
+    })
+    sortedWins.sort((a, b) => a - b) // Sort chronologically
+    return sortedWins.length >= targetCount ? sortedWins[targetCount - 1] : null
+  }
+  
+  // Tournament Performance Achievements
+  if (tournamentWins >= 1) {
+    const unlockDate = getUnlockDate(tournamentWins, 1, bestRankingStats)
+    achievements.push({ ...ACHIEVEMENT_DEFINITIONS.firstPlace, unlocked: true, unlockedDate: unlockDate })
+  } else {
+    progress.push({ ...ACHIEVEMENT_DEFINITIONS.firstPlace, current: tournamentWins, next: 1 })
+  }
+  
+  if (tournamentWins >= 3) {
+    const unlockDate = getUnlockDate(tournamentWins, 3, bestRankingStats)
+    achievements.push({ ...ACHIEVEMENT_DEFINITIONS.champion3, unlocked: true, unlockedDate: unlockDate })
+  } else {
+    progress.push({ ...ACHIEVEMENT_DEFINITIONS.champion3, current: tournamentWins, next: 3 })
+  }
+  
+  if (tournamentWins >= 5) {
+    const unlockDate = getUnlockDate(tournamentWins, 5, bestRankingStats)
+    achievements.push({ ...ACHIEVEMENT_DEFINITIONS.champion5, unlocked: true, unlockedDate: unlockDate })
+  } else {
+    progress.push({ ...ACHIEVEMENT_DEFINITIONS.champion5, current: tournamentWins, next: 5 })
+  }
+  
+  if (tournamentWins >= 10) {
+    const unlockDate = getUnlockDate(tournamentWins, 10, bestRankingStats)
+    achievements.push({ ...ACHIEVEMENT_DEFINITIONS.champion10, unlocked: true, unlockedDate: unlockDate })
+  } else {
+    progress.push({ ...ACHIEVEMENT_DEFINITIONS.champion10, current: tournamentWins, next: 10 })
+  }
+  
+  if (top3Count >= 3) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.podium3, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.podium3, current: top3Count, next: 3 })
+  
+  if (top3Count >= 5) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.podium5, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.podium5, current: top3Count, next: 5 })
+  
+  if (top5Count >= 5) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.top5_5, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.top5_5, current: top5Count, next: 5 })
+  
+  if (top5Count >= 10) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.top5_10, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.top5_10, current: top5Count, next: 10 })
+  
+  // Milestone Achievements
+  if (totalMatches >= 50) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.matches50, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.matches50, current: totalMatches, next: 50 })
+  
+  if (totalMatches >= 100) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.matches100, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.matches100, current: totalMatches, next: 100 })
+  
+  if (totalMatches >= 250) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.matches250, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.matches250, current: totalMatches, next: 250 })
+  
+  if (totalMatches >= 500) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.matches500, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.matches500, current: totalMatches, next: 500 })
+  
+  if (wins >= 25) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.wins25, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.wins25, current: wins, next: 25 })
+  
+  if (wins >= 50) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.wins50, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.wins50, current: wins, next: 50 })
+  
+  if (wins >= 100) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.wins100, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.wins100, current: wins, next: 100 })
+  
+  if (wins >= 250) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.wins250, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.wins250, current: wins, next: 250 })
+  
+  const tournamentCount = tournamentList.length
+  if (tournamentCount >= 10) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.tournaments10, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.tournaments10, current: tournamentCount, next: 10 })
+  
+  if (tournamentCount >= 25) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.tournaments25, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.tournaments25, current: tournamentCount, next: 25 })
+  
+  if (tournamentCount >= 50) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.tournaments50, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.tournaments50, current: tournamentCount, next: 50 })
+  
+  // Count unique seasons
+  const seasons = new Set()
+  tournamentList.forEach(t => {
+    const year = new Date(t.date).getFullYear()
+    seasons.add(year)
+  })
+  const seasonCount = seasons.size
+  if (seasonCount >= 5) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.seasons5, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.seasons5, current: seasonCount, next: 5 })
+  
+  // Performance Achievements
+  const winRateNum = parseFloat(winRate)
+  if (winRateNum >= 60 && totalMatches >= 20) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.winRate60, unlocked: true, unlockedDate: null })
+  else if (totalMatches >= 20) progress.push({ ...ACHIEVEMENT_DEFINITIONS.winRate60, current: winRateNum, next: 60 })
+  
+  if (winRateNum >= 70 && totalMatches >= 20) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.winRate70, unlocked: true, unlockedDate: null })
+  else if (totalMatches >= 20) progress.push({ ...ACHIEVEMENT_DEFINITIONS.winRate70, current: winRateNum, next: 70 })
+  
+  if (winRateNum >= 80 && totalMatches >= 20) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.winRate80, unlocked: true, unlockedDate: null })
+  else if (totalMatches >= 20) progress.push({ ...ACHIEVEMENT_DEFINITIONS.winRate80, current: winRateNum, next: 80 })
+  
+  const goalDiff = playerAggregated ? playerAggregated.goalDiff : 0
+  if (goalDiff >= 50) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.goalDiff50, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.goalDiff50, current: goalDiff, next: 50 })
+  
+  if (goalDiff >= 100) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.goalDiff100, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.goalDiff100, current: goalDiff, next: 100 })
+  
+  if (goalDiff >= 200) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.goalDiff200, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.goalDiff200, current: goalDiff, next: 200 })
+  
+  // TrueSkill Achievements
+  if (currentSkill >= 20) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill20, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill20, current: currentSkill, next: 20 })
+  
+  if (currentSkill >= 25) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill25, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill25, current: currentSkill, next: 25 })
+  
+  if (currentSkill >= 30) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill30, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill30, current: currentSkill, next: 30 })
+  
+  if (currentSkill >= 35) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill35, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill35, current: currentSkill, next: 35 })
+  
+  if (currentSkill >= 40) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill40, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill40, current: currentSkill, next: 40 })
+  
+  if (currentSkill >= 45) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill45, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill45, current: currentSkill, next: 45 })
+  
+  if (currentSkill >= 50) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill50, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.trueskill50, current: currentSkill, next: 50 })
+  
+  // Win Streak Achievements (calculate from oldest to newest)
+  let currentStreak = 0
+  let maxStreak = 0
+  // Reverse matchHistory to get chronological order (oldest first) for streak calculation
+  const chronologicalMatches = [...matchHistory].reverse()
+  chronologicalMatches.forEach(entry => {
+    if (entry.match.won) {
+      currentStreak++
+      maxStreak = Math.max(maxStreak, currentStreak)
+    } else {
+      currentStreak = 0
+    }
+  })
+  
+  if (maxStreak >= 5) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.winStreak5, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.winStreak5, current: maxStreak, next: 5 })
+  
+  if (maxStreak >= 10) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.winStreak10, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.winStreak10, current: maxStreak, next: 10 })
+  
+  if (maxStreak >= 15) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.winStreak15, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.winStreak15, current: maxStreak, next: 15 })
+  
+  // Partnership Achievements
+  if (topPartners.length > 0 && topPartners[0].wins >= 10) {
+    achievements.push({ ...ACHIEVEMENT_DEFINITIONS.partner10, unlocked: true, unlockedDate: null })
+  } else {
+    const maxPartnerWins = topPartners.length > 0 ? topPartners[0].wins : 0
+    progress.push({ ...ACHIEVEMENT_DEFINITIONS.partner10, current: maxPartnerWins, next: 10 })
+  }
+  
+  const uniquePartners = topPartners.length
+  if (uniquePartners >= 5) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.partner5, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.partner5, current: uniquePartners, next: 5 })
+  
+  // Season Achievements (check actual season ranking position, not tournament placement)
+  // Calculate season rankings for each season to find the player's actual position
+  const seasonStats = new Map()
+  
+  // Group tournaments by season (year)
+  const tournamentsBySeason = new Map()
+  tournaments.forEach(tournament => {
+    if (!tournament || !tournament.data) return
+    const year = new Date(tournament.date).getFullYear().toString()
+    if (!tournamentsBySeason.has(year)) {
+      tournamentsBySeason.set(year, [])
+    }
+    tournamentsBySeason.get(year).push(tournament)
+  })
+  
+  // Calculate season ranking for each season
+  const seasonPointsMap = {
+    1: 25, 2: 20, 3: 16, 4: 13, 5: 11, 6: 10, 7: 9, 8: 8,
+    9: 7, 10: 6, 11: 5, 12: 4, 13: 3, 14: 2, 15: 1, 16: 1
+  }
+  
+  let bestSeasonPoints = 0
+  let bestSeasonRankingPlace = Infinity
+  
+  tournamentsBySeason.forEach((seasonTournaments, year) => {
+    // Calculate season points for all players in this season
+    const playerSeasonStats = new Map()
+    
+    seasonTournaments.forEach(tournament => {
+      // Get all players from qualifying
+      const qualifyingStandings = tournament.data.qualifying?.[0]?.standings || []
+      const eliminationStandings = tournament.data.eliminations?.[0]?.standings || []
+      
+      // Create a map to track final placements
+      const playerFinalPlacement = new Map()
+      
+      // First, add all qualifying placements
+      qualifyingStandings.forEach(player => {
+        if (!player.removed && player.stats.matches > 0) {
+          const normalizedName = normalizePlayerNameSync(player.name)
+          playerFinalPlacement.set(normalizedName, {
+            place: player.stats.place
+          })
+        }
+      })
+      
+      // Override with elimination placements
+      eliminationStandings.forEach(player => {
+        if (!player.removed) {
+          const normalizedName = normalizePlayerNameSync(player.name)
+          playerFinalPlacement.set(normalizedName, {
+            place: player.stats.place
+          })
+        }
+      })
+      
+      // Process each player's tournament result
+      playerFinalPlacement.forEach((playerData, normalizedName) => {
+        if (!playerSeasonStats.has(normalizedName)) {
+          playerSeasonStats.set(normalizedName, {
+            name: normalizedName,
+            seasonPoints: 0
+          })
+        }
+        
+        const stats = playerSeasonStats.get(normalizedName)
+        const placePoints = seasonPointsMap[playerData.place] || 0
+        const attendancePoint = placePoints === 0 ? 1 : 0
+        stats.seasonPoints += placePoints + attendancePoint
+      })
+    })
+    
+    // Sort players by season points to determine ranking
+    const seasonRanking = Array.from(playerSeasonStats.values())
+      .sort((a, b) => {
+        if (b.seasonPoints !== a.seasonPoints) return b.seasonPoints - a.seasonPoints
+        return 0
+      })
+      .map((player, index) => ({
+        ...player,
+        rankingPlace: index + 1
+      }))
+    
+    // Find the player's position in this season's ranking
+    const playerSeasonData = seasonRanking.find(p => p.name === normalizedPlayerName)
+    if (playerSeasonData) {
+      const seasonPoints = playerSeasonData.seasonPoints
+      const rankingPlace = playerSeasonData.rankingPlace
+      
+      if (seasonPoints > bestSeasonPoints) bestSeasonPoints = seasonPoints
+      if (rankingPlace < bestSeasonRankingPlace) bestSeasonRankingPlace = rankingPlace
+      
+      seasonStats.set(year, {
+        points: seasonPoints,
+        rankingPlace: rankingPlace
+      })
+    }
+  })
+  
+  // Check achievements based on actual season ranking position
+  if (bestSeasonRankingPlace === 1) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.seasonChampion, unlocked: true, unlockedDate: null })
+  if (bestSeasonRankingPlace <= 3 && bestSeasonRankingPlace !== 1) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPodium, unlocked: true, unlockedDate: null })
+  
+  if (bestSeasonPoints >= 50) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPoints50, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPoints50, current: bestSeasonPoints, next: 50 })
+  
+  if (bestSeasonPoints >= 100) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPoints100, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPoints100, current: bestSeasonPoints, next: 100 })
+  
+  if (bestSeasonPoints >= 200) achievements.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPoints200, unlocked: true, unlockedDate: null })
+  else progress.push({ ...ACHIEVEMENT_DEFINITIONS.seasonPoints200, current: bestSeasonPoints, next: 200 })
+  
+  return {
+    unlocked: achievements.sort((a, b) => {
+      // Sort by category, then by tier
+      const categoryOrder = { tournament: 1, milestone: 2, performance: 3, trueskill: 4, streak: 5, partnership: 6, season: 7 }
+      if (categoryOrder[a.category] !== categoryOrder[b.category]) {
+        return categoryOrder[a.category] - categoryOrder[b.category]
+      }
+      return a.tier - b.tier
+    }),
+    progress: progress.sort((a, b) => {
+      // Sort by progress percentage (closest to completion first)
+      const aProgress = (a.current / a.next) * 100
+      const bProgress = (b.current / b.next) * 100
+      return bProgress - aProgress
+    }).slice(0, 5) // Show top 5 in progress
+  }
+}
+
+// Achievements Display Component
+function AchievementsDisplay({ achievements }) {
+  const { unlocked, progress } = achievements
+  
+  return (
+    <div className="achievements-container">
+      {/* Unlocked Achievements */}
+      <div className="achievements-unlocked">
+        <h3 className="achievements-section-title">
+          <span className="achievements-icon">✅</span>
+          Unlocked ({unlocked.length})
+        </h3>
+        {unlocked.length > 0 ? (
+          <div className="achievements-grid">
+            {unlocked.map(achievement => (
+              <div key={achievement.id} className={`achievement-badge unlocked tier-${achievement.tier}`}>
+                <div className="achievement-emoji">{achievement.emoji}</div>
+                <div className="achievement-info">
+                  <div className="achievement-name">{achievement.name}</div>
+                  <div className="achievement-description">{achievement.description}</div>
+                  {achievement.unlockedDate && (
+                    <div className="achievement-date">
+                      Unlocked: {new Date(achievement.unlockedDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="no-achievements">No achievements unlocked yet. Keep playing!</div>
+        )}
+      </div>
+      
+      {/* Progress Toward Next Achievements */}
+      {progress.length > 0 && (
+        <div className="achievements-progress">
+          <h3 className="achievements-section-title">
+            <span className="achievements-icon">🎯</span>
+            In Progress
+          </h3>
+          <div className="progress-list">
+            {progress.map(achievement => {
+              const progressPercent = Math.min((achievement.current / achievement.next) * 100, 100)
+              const displayCurrent = achievement.id.includes('winRate') 
+                ? achievement.current.toFixed(1) + '%'
+                : achievement.current
+              const displayNext = achievement.id.includes('winRate')
+                ? achievement.next + '%'
+                : achievement.next
+              
+              return (
+                <div key={achievement.id} className="progress-item">
+                  <div className="progress-header">
+                    <span className="progress-emoji">{achievement.emoji}</span>
+                    <div className="progress-info">
+                      <div className="progress-name">{achievement.name}</div>
+                      <div className="progress-description">{achievement.description}</div>
+                    </div>
+                    <div className="progress-stats">
+                      {displayCurrent} / {displayNext}
+                    </div>
+                  </div>
+                  <div className="progress-bar-container">
+                    <div 
+                      className="progress-bar" 
+                      style={{ width: `${progressPercent}%` }}
+                    >
+                      <span className="progress-percent">{Math.round(progressPercent)}%</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default PlayerDetail

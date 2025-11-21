@@ -26,6 +26,72 @@
   transform: translateX(-4px);
 }
 
+/* Player Detail Tabs */
+.player-detail-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  background: var(--surface);
+  padding: 0.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  overflow-x: auto;
+}
+
+.tab-button {
+  flex: 1;
+  min-width: 120px;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.tab-button:hover {
+  background: var(--surface-light);
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.tab-icon {
+  font-size: 1.25rem;
+}
+
+.tab-content {
+  min-height: 400px;
+}
+
+.tab-panel {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .player-header {
   background: var(--surface);
   border-radius: 12px;
@@ -489,6 +555,226 @@
   color: #fbbf24;
 }
 
+/* Achievements Section */
+.achievements-section {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.achievements-section h2 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.achievements-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.achievements-unlocked,
+.achievements-progress {
+  width: 100%;
+}
+
+.achievements-section-title {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.achievements-icon {
+  font-size: 1.5rem;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.achievement-badge {
+  background: var(--background);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.achievement-badge.unlocked {
+  border-color: var(--success);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+}
+
+.achievement-badge.unlocked:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border-color: var(--success);
+}
+
+.achievement-badge.tier-1 {
+  border-left: 4px solid #94a3b8;
+}
+
+.achievement-badge.tier-2 {
+  border-left: 4px solid #60a5fa;
+}
+
+.achievement-badge.tier-3 {
+  border-left: 4px solid #818cf8;
+}
+
+.achievement-badge.tier-4 {
+  border-left: 4px solid #a78bfa;
+}
+
+.achievement-badge.tier-5 {
+  border-left: 4px solid #f472b6;
+}
+
+.achievement-badge.tier-6 {
+  border-left: 4px solid #fb7185;
+}
+
+.achievement-badge.tier-7 {
+  border-left: 4px solid #fbbf24;
+}
+
+.achievement-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.achievement-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.achievement-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.achievement-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.achievement-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.no-achievements {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  background: var(--background);
+  border-radius: 8px;
+  border: 2px dashed var(--border);
+}
+
+/* Progress Section */
+.progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.progress-item {
+  background: var(--background);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.progress-item:hover {
+  border-color: var(--primary-color);
+  transform: translateX(4px);
+}
+
+.progress-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.progress-emoji {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.progress-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.progress-description {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.progress-stats {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  border-radius: 12px;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  min-width: 40px;
+}
+
+.progress-percent {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 /* Player Comparison Section */
 .player-comparison-section {
   background: var(--surface);
@@ -939,6 +1225,14 @@
     gap: 0.5rem;
     align-items: flex-start;
   }
+
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-header {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 480px) {
@@ -956,8 +1250,22 @@
 
   .trueskill-chart-section,
   .match-history-section,
-  .player-comparison-section {
+  .player-comparison-section,
+  .achievements-section {
     padding: 1.5rem;
+  }
+
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-badge {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .achievement-emoji {
+    font-size: 2rem;
   }
 
   .comparison-stats-grid {
@@ -975,6 +1283,16 @@
 
   .team-label {
     min-width: auto;
+  }
+
+  .player-detail-tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    min-width: 100px;
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
   }
 }
 

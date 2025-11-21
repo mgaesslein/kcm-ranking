@@ -1,11 +1,14 @@
 // Options page script
 document.addEventListener('DOMContentLoaded', async () => {
   // Load existing settings
-  const settings = await chrome.storage.local.get(['apiUrl']);
+  const settings = await chrome.storage.local.get(['apiUrl', 'apiKey']);
   
   // Populate fields
   if (settings.apiUrl) {
     document.getElementById('apiUrl').value = settings.apiUrl;
+  }
+  if (settings.apiKey) {
+    document.getElementById('apiKey').value = settings.apiKey;
   }
   
   // Save button
@@ -26,9 +29,15 @@ async function saveSettings() {
   
   try {
     const apiUrl = document.getElementById('apiUrl').value.trim();
+    const apiKey = document.getElementById('apiKey').value.trim();
     
     if (!apiUrl) {
       showStatus('Please enter an API URL', 'error');
+      return;
+    }
+    
+    if (!apiKey) {
+      showStatus('Please enter an API key', 'error');
       return;
     }
     
@@ -48,7 +57,8 @@ async function saveSettings() {
     const cleanUrl = apiUrl.replace(/\/$/, '');
     
     await chrome.storage.local.set({
-      apiUrl: cleanUrl
+      apiUrl: cleanUrl,
+      apiKey: apiKey
     });
     
     showStatus('✅ Settings saved successfully!', 'success');

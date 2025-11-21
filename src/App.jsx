@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import TournamentSelector from './components/TournamentSelector'
+import SeasonSelector from './components/SeasonSelector'
 import RankingTable from './components/RankingTable'
 import StatsCards from './components/StatsCards'
 import ViewToggle from './components/ViewToggle'
@@ -17,10 +18,13 @@ function App() {
   const [selectedTournament, setSelectedTournament] = useState(null)
   const [players, setPlayers] = useState([])
   const [aggregatedPlayers, setAggregatedPlayers] = useState([])
+  const [seasonPlayers, setSeasonPlayers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState('overall') // 'tournament' or 'overall'
+  const [viewMode, setViewMode] = useState('overall') // 'tournament', 'overall', or 'season'
+  const [selectedSeason, setSelectedSeason] = useState(null)
   const [selectedPlayer, setSelectedPlayer] = useState(null) // For individual player view
   const [playerHistory, setPlayerHistory] = useState(new Map()) // TrueSkill history per player
+  const [showFinaleQualifiers, setShowFinaleQualifiers] = useState(false) // Filter for season finale qualifiers
 
   useEffect(() => {
     // Preload aliases from API, then load tournaments
@@ -39,6 +43,13 @@ function App() {
           tournaments.find(t => t.id === event.state.tournamentId) : 
           tournaments[0])
         setSelectedPlayer(event.state.playerName || null)
+        setSelectedSeason(event.state.season || null)
+        setShowFinaleQualifiers(event.state.finaleQualifiers || false)
+      } else {
+        // If no state, read from URL
+        const params = new URLSearchParams(window.location.search)
+        const finaleQualifiers = params.get('finaleQualifiers')
+        setShowFinaleQualifiers(finaleQualifiers === 'true')
       }
     }
 
@@ -49,12 +60,21 @@ function App() {
     const view = params.get('view')
     const player = params.get('player')
     const tournamentId = params.get('tournament')
+    const season = params.get('season')
+    const finaleQualifiers = params.get('finaleQualifiers')
 
     if (view) setViewMode(view)
     if (player) setSelectedPlayer(player)
     if (tournamentId && tournaments.length > 0) {
       const tournament = tournaments.find(t => t.id === tournamentId)
       if (tournament) setSelectedTournament(tournament)
+    }
+    if (season && tournaments.length > 0) {
+      setSelectedSeason(season)
+      processSeasonPlayers(tournaments, season)
+    }
+    if (finaleQualifiers === 'true') {
+      setShowFinaleQualifiers(true)
     }
 
     return () => {
@@ -87,6 +107,13 @@ function App() {
         setSelectedTournament(loadedTournaments[0])
         processPlayers(loadedTournaments[0].data)
         processAggregatedPlayers(loadedTournaments)
+        
+        // Set default season to the most recent year
+        const seasons = getAvailableSeasons(loadedTournaments)
+        if (seasons.length > 0 && !selectedSeason) {
+          setSelectedSeason(seasons[0])
+          processSeasonPlayers(loadedTournaments, seasons[0])
+        }
       }
     } catch (error) {
       console.error('Error loading tournaments from API:', error)
@@ -138,6 +165,13 @@ function App() {
         setSelectedTournament(validTournaments[0])
         processPlayers(validTournaments[0].data)
         processAggregatedPlayers(validTournaments)
+        
+        // Set default season to the most recent year
+        const seasons = getAvailableSeasons(validTournaments)
+        if (seasons.length > 0 && !selectedSeason) {
+          setSelectedSeason(seasons[0])
+          processSeasonPlayers(validTournaments, seasons[0])
+        }
       }
     } catch (error) {
       console.error('Error loading tournaments from files:', error)
@@ -369,6 +403,202 @@ function App() {
     setAggregatedPlayers(aggregated)
   }
 
+  // Get available seasons (years) from tournaments
+  const getAvailableSeasons = (loadedTournaments) => {
+    const years = new Set()
+    loadedTournaments.forEach(tournament => {
+      const year = new Date(tournament.date).getFullYear()
+      years.add(year.toString())
+    })
+    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a)) // Most recent first
+  }
+
+  // Process players for a specific season (year)
+  const processSeasonPlayers = (loadedTournaments, seasonYear) => {
+    // Filter tournaments by year
+    const seasonTournaments = loadedTournaments.filter(tournament => {
+      const tournamentYear = new Date(tournament.date).getFullYear()
+      return tournamentYear.toString() === seasonYear
+    })
+
+    if (seasonTournaments.length === 0) {
+      setSeasonPlayers([])
+      return
+    }
+
+    // Use the same logic as processAggregatedPlayers but only for season tournaments
+    const playerStats = new Map()
+
+    // Calculate TrueSkill ratings for season tournaments only
+    const { playerRatings: trueSkillRatings } = calculateTrueSkillRatings(seasonTournaments)
+
+    // Season points distribution (places 1-16)
+    const seasonPointsMap = {
+      1: 25, 2: 20, 3: 16, 4: 13, 5: 11, 6: 10, 7: 9, 8: 8,
+      9: 7, 10: 6, 11: 5, 12: 4, 13: 3, 14: 2, 15: 1, 16: 1
+    }
+
+    // Aggregate stats from season tournaments only
+    seasonTournaments.forEach(tournament => {
+      // Get all players from qualifying
+      const qualifyingStandings = tournament.data.qualifying?.[0]?.standings || []
+      
+      // Get all players from eliminations (final tournament placement)
+      const eliminationStandings = tournament.data.eliminations?.[0]?.standings || []
+      
+      // Create a map to track final placements (elimination takes precedence)
+      const playerFinalPlacement = new Map()
+      
+      // First, add all qualifying placements
+      qualifyingStandings.forEach(player => {
+        if (!player.removed && player.stats.matches > 0) {
+          const normalizedName = normalizePlayerNameSync(player.name)
+          playerFinalPlacement.set(normalizedName, {
+            place: player.stats.place,
+            stats: player.stats,
+            external: player.external
+          })
+        }
+      })
+      
+      // Override with elimination placements (these are the final tournament results)
+      eliminationStandings.forEach(player => {
+        if (!player.removed) {
+          const normalizedName = normalizePlayerNameSync(player.name)
+          const existing = playerFinalPlacement.get(normalizedName)
+          if (existing) {
+            playerFinalPlacement.set(normalizedName, {
+              ...existing,
+              place: player.stats.place // Use elimination place as final place
+            })
+          }
+        }
+      })
+      
+      // Process each player's tournament result
+      playerFinalPlacement.forEach((playerData, normalizedName) => {
+        if (!playerStats.has(normalizedName)) {
+          playerStats.set(normalizedName, {
+            name: normalizedName,
+            matches: 0,
+            points: 0,
+            won: 0,
+            lost: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            tournaments: 0,
+            external: playerData.external,
+            bestPlace: playerData.place,
+            places: [],
+            seasonPoints: 0
+          })
+        }
+
+        const stats = playerStats.get(normalizedName)
+        stats.matches += playerData.stats.matches
+        stats.points += playerData.stats.points
+        stats.won += playerData.stats.won
+        stats.lost += playerData.stats.lost
+        stats.goalsFor += playerData.stats.goals
+        stats.goalsAgainst += playerData.stats.goals_in
+        stats.tournaments += 1
+        stats.bestPlace = Math.min(stats.bestPlace, playerData.place)
+        stats.places.push(playerData.place)
+        
+        // Calculate season points based on final placement
+        const placePoints = seasonPointsMap[playerData.place] || 0
+        const attendancePoint = placePoints === 0 ? 1 : 0 // +1 for attending if not in top 16
+        stats.seasonPoints += placePoints + attendancePoint
+      })
+    })
+
+    // Convert to array and calculate derived stats
+    const aggregated = Array.from(playerStats.values())
+      .filter(player => player.matches > 0)
+      .map(player => {
+        const rating = trueSkillRatings.get(player.name)
+        const trueSkill = rating ? getConservativeRating(rating) : 0
+        
+        return {
+          id: player.name,
+          name: player.name,
+          matches: player.matches,
+          points: player.points,
+          won: player.won,
+          lost: player.lost,
+          goalsFor: player.goalsFor,
+          goalsAgainst: player.goalsAgainst,
+          goalDiff: player.goalsFor - player.goalsAgainst,
+          tournaments: player.tournaments,
+          bestPlace: player.bestPlace,
+          avgPlace: (player.places.reduce((a, b) => a + b, 0) / player.places.length).toFixed(1),
+          pointsPerGame: player.matches > 0 ? (player.points / player.matches).toFixed(2) : 0,
+          winRate: player.matches > 0 
+            ? ((player.won / player.matches) * 100).toFixed(1)
+            : 0,
+          trueSkill: trueSkill,
+          seasonPoints: player.seasonPoints,
+          external: player.external
+        }
+      })
+      .sort((a, b) => {
+        // Sort by season points (primary), then TrueSkill, then total points
+        const seasonPointsDiff = b.seasonPoints - a.seasonPoints
+        if (seasonPointsDiff !== 0) return seasonPointsDiff
+        
+        const trueSkillDiff = b.trueSkill - a.trueSkill
+        if (trueSkillDiff !== 0) return trueSkillDiff
+        
+        return b.points - a.points
+      })
+      .map((player, index) => ({
+        ...player,
+        place: index + 1
+      }))
+
+    setSeasonPlayers(aggregated)
+  }
+
+  const handleSeasonChange = (season) => {
+    setSelectedSeason(season)
+    processSeasonPlayers(tournaments, season)
+    
+    // Update URL with season selection
+    const params = new URLSearchParams(window.location.search)
+    params.set('season', season)
+    params.delete('player') // Clear player selection when changing season
+    // Keep finaleQualifiers in URL if it's set
+    if (showFinaleQualifiers) {
+      params.set('finaleQualifiers', 'true')
+    } else {
+      params.delete('finaleQualifiers')
+    }
+    const newUrl = `${window.location.pathname}?${params.toString()}`
+    window.history.pushState(
+      { viewMode, season, playerName: null, finaleQualifiers: showFinaleQualifiers },
+      '',
+      newUrl
+    )
+  }
+
+  const handleFinaleQualifiersToggle = (enabled) => {
+    setShowFinaleQualifiers(enabled)
+    
+    // Update URL with filter state
+    const params = new URLSearchParams(window.location.search)
+    if (enabled) {
+      params.set('finaleQualifiers', 'true')
+    } else {
+      params.delete('finaleQualifiers')
+    }
+    const newUrl = `${window.location.pathname}?${params.toString()}`
+    window.history.pushState(
+      { viewMode, season: selectedSeason, playerName: null, finaleQualifiers: enabled },
+      '',
+      newUrl
+    )
+  }
+
   const handleTournamentChange = (tournament) => {
     setSelectedTournament(tournament)
     processPlayers(tournament.data)
@@ -406,7 +636,27 @@ function App() {
     window.history.back()
   }
 
-  const currentPlayers = viewMode === 'overall' ? aggregatedPlayers : players
+  // Filter season players for finale qualifiers if enabled
+  const getFilteredSeasonPlayers = () => {
+    if (viewMode !== 'season' || !showFinaleQualifiers) {
+      return seasonPlayers
+    }
+    
+    // Filter players with at least 10 games
+    const eligiblePlayers = seasonPlayers.filter(player => player.matches >= 10)
+    
+    // Mark top 20 as qualified, next 5 as successors
+    return eligiblePlayers.map((player, index) => ({
+      ...player,
+      finaleStatus: index < 20 ? 'qualified' : index < 25 ? 'successor' : null
+    })).slice(0, 25) // Only show top 25 (20 qualified + 5 successors)
+  }
+
+  const currentPlayers = viewMode === 'overall' 
+    ? aggregatedPlayers 
+    : viewMode === 'season' 
+      ? getFilteredSeasonPlayers()
+      : players
 
   if (loading) {
     return (
@@ -493,6 +743,16 @@ function App() {
               tournaments={tournaments}
               selectedTournament={selectedTournament}
               onSelectTournament={handleTournamentChange}
+            />
+          )}
+
+          {viewMode === 'season' && (
+            <SeasonSelector
+              seasons={getAvailableSeasons(tournaments)}
+              selectedSeason={selectedSeason}
+              onSelectSeason={handleSeasonChange}
+              showFinaleQualifiers={showFinaleQualifiers}
+              onToggleFinaleQualifiers={handleFinaleQualifiersToggle}
             />
           )}
 
